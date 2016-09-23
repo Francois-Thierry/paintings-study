@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>A Study of Paintings</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+        <link rel="stylesheet" href="main.css">
+
+        <script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s=" crossorigin="anonymous"></script>
+        <script src="https://d3js.org/d3.v4.min.js"></script>
+        <script src="utils/three.min.js"></script> <!-- r81 -->
+        <script src="utils/TrackballControls.js"></script>
+        <script src="utils/bibtexParse.js"></script>
+
+        <script src="js/histogram2D.js"></script>
+        <script src="js/histogram3D.js"></script>
+
+    </head>
+    <body>
+<!-- ---------------------------------------------------------------------- -->
+<!-- ---------------------------------------------------------------------- -->
+    <section class="wrapper">
+
+        <div class="row">
+            <div class="column-12">
+
+            <h1>A study of paintings</h1>
+
+            <p>Out of personal interest I wanted to examine the underlying patterns in paintings through a computer-vision approach. This approach is used for automated classification of images. This is important because it helps image recognition and classification techniques that are used for various applications such as image search (google, tin eye, etc.), </p>
+
+            <p>As I wanted to study as many paintings as possible, I searched for available database. I ended-up making my own dataset from the paintings aggregated by <a href="http://wikiart.org" target="_blank">wikiart.org</a>. This dataset regroups 35028 paintings from 1503 artists with genre, style and date informations for each.</p>
+
+<!-- ---------------------------------------------------------------------- -->
+
+            <h2>Color of paintings</h2>
+
+            <p>I wanted to answer this simple question: what is the color of paintings? I started by doing some color quantization experiments on the paintings from the database. The figure below shows a painting from the dataset and its corresponding 3D histogram in RGB space. The size of each color represents its frequency in the painting. Sizes are limited to a maximum value for better representation. Refresh the page to display another painting.</p>
+
+            </div>
+        </div>
+
+        <div class="row plot">
+            <div class="column-6" id="image_holder">
+                <a id="img_link" href="" target="_blank">
+                    <img id="image" class="image" src="" alt="">
+                </a>
+            </div>
+            <!-- <div class="column-6 svg_container" id="histogram2D"></div> -->
+
+            <div class="column-6" id="container"></div>
+        </div>
+
+        <div class="row">
+            <div class="column-12">
+
+            <p>So what are the colors of paintings? Figure 2 shows the mean histogram of the paintings of the database.</p>
+
+<!-- ---------------------------------------------------------------------- -->
+
+            <h2>Finding paintings by color</h2>
+
+            <p>To select paintings given a particular color is more complicated that it first seems because we should extract an information about all the colors of a painting and compare it to the single color that the user selected. Here we test several methods.</p>
+            <p>The first method is the dominant color, the second method is the dominant color volume and the third method uses a simplified convex-hull on the 3D color histogram.</p>
+
+<!-- ---------------------------------------------------------------------- -->
+
+            <h2>Paintings classification</h2>
+
+            <p>For color comparison the relevant question is what informations describe best the colors in an image?</p>
+            <p>With features such as color, texture and shapes we can classify paintings by genre, style or date.</p>
+
+<!-- ---------------------------------------------------------------------- -->
+
+            <h2>Selecting interesting paintings</h2>
+
+            <p>By comparing the similarity between paintings we can evaluate the originality and influence for a particular painting <a class="ref" target="_blank">[1]</a>. Originality is a low value of similarity with paintings painted prior to the considered painting and influence is a high similarity with paintings painted after this work. Interesting paintings are paintings that have a low originality over influence ratio. By evaluating the similarity connection graph of every painting we can therefore determine the most creative paintings throughout history <a class="ref" target="_blank">[2]</a>.</p>
+            </div>
+        </div>
+
+<!-- ---------------------------------------------------------------------- -->
+            
+        <div class="row bibliography">
+            <div class="column-12"><h2>Bibliography</h2></div>          
+        </div>
+
+    </section>
+<!-- ---------------------------------------------------------------------- -->
+<!-- ---------------------------------------------------------------------- -->
+        <script> 
+        // Figure 1
+
+            var img = null;
+
+            d3.json("paintings.json",function (json) {
+                // pick a random item from the dataset
+                var item = json[Math.floor(Math.random()*json.length)];
+                // load the image of the painting and draw histograms
+                loadImage(item);
+            });
+
+            function makeHistograms(item)
+            {
+                // fill painting information
+                loadPaintingInformations(item);
+
+                // var start = new Date().getTime();
+                // histogram2D();
+                // var end = new Date().getTime();
+                // var time = end - start;
+                // console.log("histogram2D - Execution time: "+time/1000+" sec")
+
+                var start = new Date().getTime();
+                histogram3D();
+                var end = new Date().getTime();
+                var time = end - start;
+                console.log("histogram3D - Execution time: "+time/1000+" sec")
+            }
+
+            function loadPaintingInformations (item) {
+                var item_info_string = "<div><p>";
+                item_info_string += "<b>Artist: </b>"+item["artist"]+"<br>";
+                item_info_string += "<b>Title: </b>"+item["title"]+"<br>";
+                item_info_string += "<b>Genre: </b>"+item["genre"].replace("-", " ")+"<br>";
+                item_info_string += "<b>Style: </b>"+item["style"].replace("-", " ")+"<br>";
+                item_info_string += "<b>Year: </b>"+item["year"]+"</p></div>";
+                $("#image_holder").append(item_info_string);
+            };
+            
+            function loadImage(item)
+            {               
+                document.getElementById('img_link').href = item["url"];
+               
+                // var url = "https://crossorigin.me/"+item["url"];
+                var url = "https://cors-anywhere.herokuapp.com/"+item["url"];
+                
+                img = document.getElementById('image');
+                // Set the crossOrigin property.
+                img.crossOrigin = 'Anonymous';
+                
+                // Wait until loaded.
+                img.onload = function() {makeHistograms(item)};
+                img.onerror = function() { alert('Error loading image.'); console.error('Error loading image:'); console.error(url) };
+
+                // Try to load the painting with Large size (~150kb)
+                $.ajax({
+                    type: 'HEAD',
+                    url: url+'!Large.jpg',
+                    success: function() 
+                    {
+                        img.src = url+"!Large.jpg";
+                    },
+                    // If it fails load default size
+                    error: function() 
+                    {
+                        img.src = url;
+                    }
+                });
+
+                // img.src = "local/flow.jpg";
+            }
+            
+        </script>
+<!-- ---------------------------------------------------------------------- -->
+        <script>
+        // Bibliography
+
+        $.get('paintings_study.bib', function(data) {
+            var biblio = bibtexParse.toJSON(data);
+            for (i=0; i<biblio.length; i++) {
+                var citation = biblio[i]["entryTags"];
+                var bibentry = citation["author"]+"<br/>"
+                bibentry += "<a target='_blank' href='"+citation["url"]+"' style='text-decoration:none'>"+citation["title"]+"</a><br/>"
+                bibentry += citation["journal"]+", "+citation["year"]
+                $(".bibliography").append('<div class="column-12 bibentry"><div style="margin-right:0.5em;">['+(i+1).toString()+']</div><div id="bibitem'+i.toString()+'">'+bibentry+'</div></div>')
+            }
+        }, 'text');
+
+        $( document ).ready(function() {
+            $(".ref").each(function(i, e) {
+                this.href = $("#bibitem"+i.toString()+" a").attr("href");
+            });
+        });
+            
+        </script>
+
+    </body>
+<!-- http://bl.ocks.org/cmpolis/fbc368f79c06c1912b8c04c795f592a8 -->
+<!-- http://bl.ocks.org/armollica/0dfac0e7c3d33fcca86b -->
+<!-- http://bl.ocks.org/devgru/4c6c73b278a0dba364f8 -->
+<!-- view-source:http://h3stogram.herokuapp.com/javascripts/h3stogram_main.js -->
+</html>

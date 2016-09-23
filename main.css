@@ -1,0 +1,200 @@
+*,
+*:after,
+*:before {
+    margin: 0;
+    padding: 0;
+    color: #212121;
+    background-color: #F5F5F5;
+    -webkit-font-smoothing: antialiased;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box; 
+    }
+    
+img {
+    width: auto;
+    max-width: 100%;
+    height: auto !important; 
+    }   
+
+.wrapper {
+    width: 100%;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.wrapper:after,
+.row:after {
+      content: "";
+      display: table;
+      clear: both; 
+      }
+     
+[class*='column-'] {
+    float: left;
+    padding: 1em;
+    width: 100%;
+    min-height: 1px;
+    margin-bottom: 1em;
+    text-align: left;
+    }
+
+a {
+    text-decoration: none;
+    color: #212121;
+    font-weight: bold;
+}
+
+p { 
+    float: left;
+    font-family: "adobe-caslon-pro", georgia, serif;
+    font-size: 1.2em;
+    font-weight: 500;
+    line-height: 1.2;
+    text-align: justify;
+    margin-bottom: 1.25em;
+}
+
+.bibliography {
+    margin-bottom: 7em;
+}
+
+.bibliography h2 {
+    margin-top: 0;
+    margin-bottom: -0.5em;
+}
+
+.bibentry {
+    float: left;
+    font-size: 1em;
+    margin-bottom: -0.75em;
+    display: flex;
+    text-align: left;
+}
+
+h1 {
+    float: left;
+    font-family: "PT Sans", sans-serif;
+    margin-top: 1.5em;
+    margin-bottom: 1.25em;
+    font-size: 3em;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #212121;
+}
+
+h2 {
+    float: left;
+    font-family: "PT Sans", sans-serif;
+    margin-top: 1.5em;
+    margin-bottom: 1em;
+    font-size: 1.75em;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #212121;
+}
+
+.row.plot {
+    background: #fff;
+    border-radius: 2px;
+    display: inline-block;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+    margin-bottom: 1.25em;
+    margin-top: -1.25em;
+}
+
+.row.plot > * {
+    background-color: white;
+    margin-bottom: 0;
+    text-align: center;
+}
+
+.row.plot p {
+    background-color: white;
+    font-size: 0.8em;
+    margin: 0;
+}
+
+.row.plot b, #image_holder, #container {
+    background: #fff;
+}
+/*.svg-container {
+    display: block;
+    position: relative;
+    width: 100%;
+    padding-bottom: 100%; /* aspect ratio 
+    /*vertical-align: top;*/
+    /*overflow: hidden;*/
+/*}*/
+/*.svg-content-responsive {
+    display: block;
+    line-height: 0;
+}*/
+
+#img_link {
+  display: block;
+  line-height: 0;
+  padding-bottom: 0.5em;
+  background-color: white;
+}
+
+@media only screen and (min-width: 30em) {
+
+    .wrapper {
+        width: 95%;
+        max-width: 65em;
+        }
+        
+    .column-1 {
+        width: 8.33333%; 
+        }
+        
+    .column-2 {
+        width: 16.66667%; 
+        }
+        
+    .column-3 {
+        width: 25%; 
+        }
+        
+    .column-4 {
+        width: 33.33333%; 
+        }
+        
+    .column-5 {
+        width: 41.66667%; 
+        }
+        
+    .column-6 {
+        width: 50%; 
+        }
+        
+    .column-7 {
+        width: 58.33333%; 
+        }
+        
+    .column-8 {
+        width: 66.66667%; 
+        }
+        
+    .column-9 {
+        width: 75%; 
+        }
+        
+    .column-10 {
+        width: 83.33333%; 
+        }
+        
+    .column-11 {
+        width: 91.66667%; 
+        }
+        
+    .column-12 {
+        width: 100%; 
+        }
+
+    .row.plot {
+        max-width: 85em;
+    }
+    
+}
