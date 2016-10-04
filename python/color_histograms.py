@@ -10,113 +10,158 @@ import cv2
 import json
 import numpy as np
 import multiprocessing
+# from jsonpath import jsonpath
+import requests
+from urllib.parse import unquote
+from urllib.request import urlopen
 
-# I discarded "design" (2983 images), "sculpture" (2712 images),
-# "installation" (1673 images), "photo" (1092 images), "poster" (623 images),
-# "caricature" (435), "calligraphy" (234 images), "graffity" (194 images), and
-# "advertisement" (122 images). I also didn't took genres with less than 100
-# images.
-# 2016.08.29
+def make_histogram(colors):
+    results = {}
+    for color in colors:
+        color_key = str(color[0])+","+str(color[1])+","+str(color[2])
+        if color_key not in results:
+            results[color_key] = 1
+        else:
+            results[color_key] += 1
+    # filter out colors with only 1 pixel (usually around 50%) to save space
+    # return {k:v for k, v in results.items() if v>1}
+    return results
 
-GENRES = ['portrait', 'landscape', 'genre-painting', 'abstract',
-          'religious-painting', 'cityscape', 'sketch-and-study', 'illustration',
-          'figurative', 'still-life', 'symbolic-painting', 'nude-painting-nu',
-          'mythological-painting', 'marina', 'animal-painting',
-          'flower-painting', 'self-portrait', 'allegorical-painting',
-          'history-painting', 'interior', 'literary-painting',
-          'battle-painting', 'wildlife-painting', 'capriccio', 'cloudscape',
-          'veduta', 'miniature', 'tessellation', 'pastorale',
-          'bird-and-flower-painting']
+# http://stackoverflow.com/questions/15962119/using-bytearray-with-socket-recv-into
+# http://stackoverflow.com/questions/24236271/what-can-i-do-to-improve-socket-performance-in-python-3
+# http://stackoverflow.com/questions/33528959/downloading-images-with-gevent
 
 def mp_worker(item):
+    "compute the histogram from a painting url"
     # open painting from item url
-    # compute histogram
+    try:
+        resp = urlopen(item["url"]+"!Blog.jpg").read()
+    except:
+        # try:
+        resp = requests.get(item["url"]).content
+        # resp = urlopen(item["url"])
+        # except:
+        #     print("ERROR URL with", repr(item["url"]))
+        #     return({}, item["style"])
+    # reshape it as flat RGB Uint8 bytes array
+    img = np.asarray(bytearray(resp), dtype="uint8")
+### PAINTING IN RGB OR BGR ?
+    try:
+        # reshape the image data as color pixels
+        painting = cv2.imdecode(img, -1).reshape((-1, 3))
+    except:
+        print("ERROR IMAGE with", item["url"])
+        print(resp)
+        return({}, item["style"])
+    # compute the histogram
+    full_histogram = make_histogram(painting.tolist())
+    # get the maximum pixel count
+    counts = max(full_histogram.values())
+    # filter out colors with only 1 pixel (usually around 50%) and normalize
+    # and round the counts to save space in the file
+    histogram = {k:round(v/counts, 2) for k, v in full_histogram.items() if v>1}
+    return (histogram, item["style"])
+
+def mp_handler(data, test=False):
+    cpus = multiprocessing.cpu_count()
+    p = multiprocessing.Pool(cpus)
+
+    histogram = {}
+
+    # for genre in GENRES:
+    #     genre = genre.replace("-", "_")
+    #     globals()[genre+"_file"] = eval("open('histograms/genre_"+genre+".txt', 'w')")
+
+    for idx, result in enumerate(p.imap(mp_worker, data)):
+        if not test:
+            # with open("../data/histograms.json", "r") as json_file:
+            #     histogram = json.load(json_file)
+            for key, value in result[0].items():
+                if not key in histogram:
+                    histogram[key] = value
+                else:
+                    histogram[key] = round(0.5*(histogram[key]+value), 2)
+            if idx+1 in range(0, 400+100, 100):
+                print("processed", idx+1, "paintings")
+
+    # remove 0.0 counts
+    histogram = {k:v for k, v in histogram.items() if v>0.0}
+
+    if not test:   
+        with open("../data/histograms.json", "w") as json_file:
+            json.dump(histogram, json_file)
+
+        #     mean_histogram = result[0]
+        # eval(result[1].replace("-", "_")+"_file.write(',_'+result[0])")
+
     # read file extract previous histogram
         # for all_paintings file
         # for this item genre
     # compute mean with previous histograms
-    # return (histogram_mean_all, histogram_mean_genre, item["genre"])
-    return (item["title"], item["genre"])
-
-def mp_handler(data):
-    cpus = multiprocessing.cpu_count()
-    p = multiprocessing.Pool(cpus)
-
-    for genre in GENRES:
-        genre = genre.replace("-", "_")
-        globals()[genre+"_file"] = eval("open('histograms/genre_"+genre+".txt', 'w')")
-
-    for result in p.imap(mp_worker, data):
-        eval(result[1].replace("-", "_")+"_file.write(',_'+result[0])")
 
 
 if __name__ == '__main__':
+    import cProfile, pstats
     
-    # with open("../paintings.json", "r") as json_file:
-    #     data = json.loads(json_file.read())
-    # mp_handler(data)
+    # select the 35 first paintings of the dataset
+    with open("../data/paintings.json", "r") as json_file:
+        data = json.loads(json_file.read())
 
-    # for testing, only use 32 bins so that matplotlib can scatter it
-    # bins = 512
-    
-    # overcome the cors limitation
-    # load the image from item url
-    painting = cv2.imread("../local/flow.jpg")
-    # convert the colors to the proper color spaces
-    image_rgb = cv2.cvtColor(painting, cv2.COLOR_BGR2RGB)
-    image_rgb = image_rgb.reshape(image_rgb.shape[0]*image_rgb.shape[1], 3)
-    # image_rgb = image_rgb.flatten()
+    mp_handler(data[:400])
 
-    def count(colors):
-        results = {}
-        for color in colors:
-            color_key = ",".join([str(i) for i in color])
-            if color_key not in results:
-                results[color_key] = 1
-            else:
-                results[color_key] += 1
-        return results
+    with open("../data/histograms.json", "r") as json_file:
+        histogram = json.load(json_file)
 
-    counts_dict = count(image_rgb.tolist())
-    print(len(image_rgb), len(counts_dict))
+    print(len(histogram.keys()), min(histogram.values()), max(histogram.values()))
 
-    # remove unique pixels
-    # image_rgb = image_rgb[counts!=1]
+    # data1 = {'artist': 'Giuseppe Arcimboldo', 'genre': 'allegorical-painting', 'url': 'http://uploads0.wikiart.org/autumn-1573(1).jpg', 'DB': 'wikiart', 'title': 'Autumn', 'style': 'mannerism-late-renaissance', 'year': '1573'}       
 
-    # print(max(counts))
-    
-    # particles = int(len(image_rgb)/3)
-    # positions = np.zeros(len(image_rgb))
-    # print(len(positions))
+    # cProfile.run("mp_worker(data1)", "{}.profile".format(__file__))
+    # s = pstats.Stats("{}.profile".format(__file__))
+    # s.strip_dirs()
+    # s.sort_stats("time").print_stats(10)
 
-    # for i in range(len(positions)):
-    #     positions[3*i+0] = image_rgb[3*i+0]/255
-    #     positions[3*i+1] = image_rgb[3*i+1]/255
-    #     positions[3*i+2] = image_rgb[3*i+2]/255
+    # def test_single_threaded():
+    #     for item in data[:35]:
+    #         mp_worker(item)
 
+    # cProfile.run("test_single_threaded()", "{}.profile".format(__file__))
+    # s = pstats.Stats("{}.profile".format(__file__))
+    # s.strip_dirs()
+    # s.sort_stats("time").print_stats(10)
+
+    # cProfile.run("mp_handler(data[:35], test=True)", "{}.profile".format(__file__))
+    # s = pstats.Stats("{}.profile".format(__file__))
+    # s.strip_dirs()
+    # s.sort_stats("time").print_stats(10)
+
+
+    # # load the image from item url
+    # painting = cv2.imread("../local/meadows.jpg")
+    # # convert the colors to the proper color spaces
+    # image_rgb = cv2.cvtColor(painting, cv2.COLOR_BGR2RGB)
+    # # reshape the color data
+    # rgb_data = image_rgb.reshape(image_rgb.shape[0]*image_rgb.shape[1], 3)
+    # # compute the histogram
+    # full_histogram = make_histogram(rgb_data.tolist())
+
+    # # for testing, only use 32 bins so that matplotlib can scatter it
+    # bins = 32
     # # make 3D histogram of colors in painting
     # hist_RGB = cv2.calcHist([image_rgb], [0, 1, 2], None, [bins, bins, bins],
     #                         [0, 255, 0, 255, 0, 255])
     # # normalize it
     # cv2.normalize(hist_RGB, hist_RGB)
-
-    # # positions are colors too
+    
     # positions = [[i, j, k] for i in range(bins) for j in range(bins)
     #              for k in range(bins)]
-    # # positions = [[i/bins, j/bins, k/bins, hist_RGB[i, j, k]]
-    # #              for i in range(bins) for j in range(bins) for k in range(bins)]
     # positions = np.array(positions)
 
-    # hist_RGB = hist_RGB.flatten()
-    # # # hist_RGB /= hist_RGB.max()
-
-    # positions = positions[hist_RGB != 0.0, :]/255
-
-    # print(len(positions.flatten()))
-
-
-
-     # ==> 13 sec for 256 bins
+    # # filter out colors with only 1 pixel (usually around 50%) to save space
+    # histogram = {k:v for k, v in full_histogram.items() if v>1}
+    # # save the histogram
+    # with open("../data/histogram_meadows.json", "w") as json_file:
+    #     json.dump(histogram, json_file)
 
     # import matplotlib.pyplot as plt
     # from mpl_toolkits.mplot3d import Axes3D
@@ -128,18 +173,7 @@ if __name__ == '__main__':
     # plt.yticks([])
     # ax = fig.add_subplot(122, projection='3d', elev=30, azim=20)
 
-    # ax.scatter(image_rgb[:, 0], image_rgb[:, 1], image_rgb[:, 2],
-    #            facecolors=image_rgb/255)
-
-    # # # ==> 3.7 sec !!!
-
     # ax.scatter(positions[:, 0], positions[:, 1], positions[:, 2],
-    #        facecolors=positions/bins)
-    # # ax.scatter(positions[:, 0], positions[:, 1], positions[:, 2],
-    # #            facecolors=positions/bins, s=hist_RGB*bins**2)
+    #            facecolors=positions/bins, s=10*hist_RGB*bins**2)
 
-    # # # ==> really long !!!!!!!!!!
-
-    # plt.show()
-    
-    pass
+    # plt.show()    

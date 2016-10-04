@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - multiple renderers</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+		<script src="utils/three.min.js"></script>
+		<script src="https://d3js.org/d3.v4.min.js"></script>
+
+	</head>
+	<body>
+
+		<!-- <script src="js/Detector.js"></script> -->
+		<!-- <script src="js/libs/stats.min.js"></script> -->
+
+		<script>
+
+			// if (! Detector.webgl) Detector.addGetWebGLMessage();
+
+			var camera;
+
+			var uniforms = {
+	            color:     { value: new THREE.Color( 0xffffff ) },
+	            // about:config set security.fileuri.strict_origin_policy to False
+	            // texture:   { value: new THREE.TextureLoader().load( "ball.png" ) }
+	        };
+
+			var vertexshader = "attribute float size; attribute vec3 color; varying vec3 vColor; void main() { vColor = color; gl_PointSize = size; vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 ); gl_Position = projectionMatrix * mvPosition; }"
+			var fragmentshader = "varying vec3 vColor; void main() { gl_FragColor = vec4(vColor, 1.0); }"
+
+			var renderers = [],
+			    scenes = [];
+
+			init();
+			d3.json("data/histogram_flow.json",function (json) {
+		        // load the histogram
+		        histogram = json;
+		        histogram3D(histogram, scenes[0]);
+		    });
+			setAnimate(0);
+
+			init();
+			d3.json("data/histogram_aristotle.json",function (json) {
+		        // load the histogram
+		        histogram = json;
+		        histogram3D(histogram, scenes[1]);
+		    });
+			setAnimate(1);
+
+			init();
+			d3.json("data/histogram_meadows.json",function (json) {
+		        // load the histogram
+		        histogram = json;
+		        histogram3D(histogram, scenes[2]);
+		    });
+		    setAnimate(2);
+
+			function init() {
+				var renderer = new THREE.WebGLRenderer({antialias:true});
+				renderer.setClearColor(0xffffff);
+				renderer.setPixelRatio(window.devicePixelRatio);
+				// renderer1.setSize(window.innerWidth, window.innerHeight / 2);
+				document.body.appendChild(renderer.domElement);
+				renderers.push(renderer);
+
+				var scene = new THREE.Scene();
+				scenes.push(scene)
+
+				camera = new THREE.PerspectiveCamera(45, 1, 1, 10);
+				camera.position.set(-1.5, 0.5, -1);
+				camera.lookAt(new THREE.Vector3(0.5, 0.5, 0.5));
+			}
+
+	        function histogram3D(histogram, scene) {
+        		// instanciate buffer attributes
+			    var positions = new Float32Array(Object.keys(histogram).length*3);
+			    var colors = new Float32Array(Object.keys(histogram).length*3);
+			    var sizes = new Float32Array(Object.keys(histogram).length);
+			    // get colors from histogram keys
+			    var keys = Object.keys(histogram).map(function (key) {return key});
+
+			    for (var i=0; i<keys.length; i++) {
+
+			        var key = keys[i];
+
+			        var r = parseInt(key.split(",")[0])/255.;
+			        var g = parseInt(key.split(",")[1])/255.;
+			        var b = parseInt(key.split(",")[2])/255.;
+
+			        colors[3*i+0] = r;
+			        colors[3*i+1] = g;
+			        colors[3*i+2] = b;
+			        
+			        // colors are also positions
+			        positions[3*i+0] = r;
+			        positions[3*i+1] = g;
+			        positions[3*i+2] = b;
+
+			        sizes[i] = ((histogram[key] > 50) ? 50 : histogram[key]);
+
+			    };
+			    // Create a new buffer geometry with precomputed attributes
+			    var geometry = new THREE.BufferGeometry();
+			    geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
+			    geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3));
+			    geometry.addAttribute('size', new THREE.BufferAttribute(sizes, 1));
+			    // Prepare a new material from custom GLSL shader (at the top of the file)
+			    var shaderMaterial = new THREE.ShaderMaterial({uniforms:uniforms,
+			        vertexShader:vertexshader, fragmentShader:fragmentshader});
+			    // create the particules and add it to the scene
+			    var particles = new THREE.Points(geometry, shaderMaterial);
+			    scene.add(particles);
+	        };
+
+	        function setAnimate(idx) {
+		        function animate() {
+					requestAnimationFrame(animate);
+					renderers[idx].render(scenes[idx], camera);
+	       		}
+	       		animate();
+			}
+
+		</script>
+
+	</body>
+</html>
