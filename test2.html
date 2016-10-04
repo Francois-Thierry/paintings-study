@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - multiple elements</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			* {
+				box-sizing: border-box;
+				-moz-box-sizing: border-box;
+			}
+			body {
+				color: #000;
+				font-family:Monospace;
+				font-size:13px;
+				background-color: #fff;
+				margin: 0px;
+				text-align: center;
+			}
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+				text-align:center;
+			}
+			#content {
+				position: absolute;
+				top: 0px; width: 100%;
+				z-index: 1;
+				padding: 3em 0 0 0;
+			}
+			a {
+				color: #0080ff;
+			}
+			#c {
+				position: fixed;
+				left: 0px;
+				width: 100%;
+				height: 100%;
+			}
+			.list-item {
+				display: inline-block;
+				margin: 1em;
+				padding: 1em;
+				box-shadow: 1px 2px 4px 0px rgba(0,0,0,0.25);
+			}
+			.list-item .scene {
+				width: 200px;
+				height: 200px;
+			}
+			.list-item .description {
+				color: #888;
+				font-family: sans-serif;
+				font-size: large;
+				width: 200px;
+				margin-top: 0.5em;
+				text-align: left;
+			}
+		</style>
+
+		<script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s=" crossorigin="anonymous"></script>
+		<script src="https://d3js.org/d3.v4.min.js"></script>
+		<script src="utils/three.min.js"></script>
+		<script src="utils/OrbitControls.js"></script>
+
+	</head>
+	<body>
+
+		<canvas id="c"></canvas>
+		<div id="content"></div>
+
+
+		<!-- <script src="js/Detector.js"></script> -->
+
+		<script id="template" type="notjs">
+			<div class="scene"></div>
+			<div class="description">$</div>
+		</script>
+		<script>
+			// if (! Detector.webgl) Detector.addGetWebGLMessage();
+			var canvas;
+			var scenes = [], renderer;
+
+			var uniforms = {
+	            color:     { value: new THREE.Color(0xffffff) },
+	            // about:config set security.fileuri.strict_origin_policy to False
+	            // texture:   { value: new THREE.TextureLoader().load("ball.png") }
+	        };
+
+			var vertexshader = "attribute float size; attribute vec3 color; varying vec3 vColor; void main() { vColor = color; gl_PointSize = size; vec4 mvPosition = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mvPosition; }"
+			var fragmentshader = "varying vec3 vColor; void main() { gl_FragColor = vec4(vColor, 1.0); }"
+
+			var scene_id,
+			    renderers = [],
+			    scenes = [];
+
+			var histograms = ["histogram_flow",
+			                  "histogram_aristotle",
+			                  "histogram_meadows"];
+
+			init();
+			
+			animate();
+
+			function init() {
+
+				canvas = document.getElementById("c");
+				var template = document.getElementById("template").text;
+				var content = document.getElementById("content");
+
+				for (var i=0; i<histograms.length; i++) {
+					// make a list item
+					var element = document.createElement("div");
+					element.className = "list-item";
+					element.innerHTML = template.replace('$', i + 1);
+					content.appendChild(element);
+
+					var scene = new THREE.Scene();
+					// Look up the element that represents the area
+					// we want to render the scene
+					scene.userData.element = element.querySelector(".scene");
+
+					var camera = new THREE.PerspectiveCamera(45, 1, 1, 10);
+					camera.position.set(-1.5, 0.5, -1);
+					camera.lookAt(new THREE.Vector3(0.5, 0.5, 0.5));
+					scene.userData.camera = camera;
+
+					var controls = new THREE.OrbitControls(scene.userData.camera, scene.userData.element);
+					controls.minDistance = 2;
+					controls.maxDistance = 5;
+					controls.enablePan = false;
+					controls.enableZoom = true;
+					scene.userData.controls = controls;
+
+				    scene.add(new THREE.HemisphereLight(0xaaaaaa, 0x444444));
+
+					var light = new THREE.DirectionalLight(0xffffff, 0.5);
+					light.position.set(1, 1, 1);
+					scene.add(light);
+
+					makeHistograms(i);
+
+					scenes.push(scene);
+				}
+
+				renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+				renderer.setClearColor(0xffffff, 1);
+				renderer.setPixelRatio(window.devicePixelRatio);
+			}
+			function updateSize() {
+				var width = canvas.clientWidth;
+				var height = canvas.clientHeight;
+				if (canvas.width !== width || canvas.height != height) {
+					renderer.setSize(width, height, false);
+				}
+			}
+			function animate() {
+				render();
+				requestAnimationFrame(animate);
+			}
+			function render() {
+				updateSize();
+				renderer.setClearColor(0xffffff);
+				renderer.setScissorTest(false);
+				renderer.clear();
+				renderer.setClearColor(0xe0e0e0);
+				renderer.setScissorTest(true);
+				scenes.forEach(function(scene) {
+					// get the element that is a place holder for where we want to
+					// draw the scene
+					var element = scene.userData.element;
+					// get its position relative to the page's viewport
+					var rect = element.getBoundingClientRect();
+					// check if it's offscreen. If so skip it
+					if (rect.bottom < 0 || rect.top  > renderer.domElement.clientHeight ||
+						 rect.right  < 0 || rect.left > renderer.domElement.clientWidth) {
+						return;  // it's off screen
+					}
+					// set the viewport
+					var width  = rect.right - rect.left;
+					var height = rect.bottom - rect.top;
+					var left   = rect.left;
+					var bottom = renderer.domElement.clientHeight - rect.bottom;
+					renderer.setViewport(left, bottom, width, height);
+					renderer.setScissor(left, bottom, width, height);
+
+					var camera = scene.userData.camera;
+					//camera.aspect = width / height; // not changing in this example
+					//camera.updateProjectionMatrix();
+					//scene.userData.controls.update();
+					renderer.render(scene, camera);
+				});
+			}
+
+			function makeHistograms(idx) {
+				d3.json("data/"+histograms[idx]+".json", function (json) {
+			        // load the histogram
+			        scenes[idx].add(histogram3D(json));
+			    });
+			}
+
+			function histogram3D(histogram) {
+        		// instanciate buffer attributes
+			    var positions = new Float32Array(Object.keys(histogram).length*3);
+			    var colors = new Float32Array(Object.keys(histogram).length*3);
+			    var sizes = new Float32Array(Object.keys(histogram).length);
+			    // get colors from histogram keys
+			    var keys = Object.keys(histogram).map(function (key) {return key});
+
+			    for (var i=0; i<keys.length; i++) {
+
+			        var key = keys[i];
+
+			        var r = parseInt(key.split(",")[0])/255.;
+			        var g = parseInt(key.split(",")[1])/255.;
+			        var b = parseInt(key.split(",")[2])/255.;
+
+			        colors[3*i+0] = r;
+			        colors[3*i+1] = g;
+			        colors[3*i+2] = b;
+			        
+			        // colors are also positions
+			        positions[3*i+0] = r;
+			        positions[3*i+1] = g;
+			        positions[3*i+2] = b;
+
+			        sizes[i] = ((histogram[key] > 50) ? 50 : histogram[key]);
+
+			    };
+			    // Create a new buffer geometry with precomputed attributes
+			    var geometry = new THREE.BufferGeometry();
+			    geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
+			    geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3));
+			    geometry.addAttribute('size', new THREE.BufferAttribute(sizes, 1));
+			    // Prepare a new material from custom GLSL shader (at the top of the file)
+			    var shaderMaterial = new THREE.ShaderMaterial({uniforms:uniforms,
+			        vertexShader:vertexshader, fragmentShader:fragmentshader});
+			    // create the particules and add it to the scene
+			    var particles = new THREE.Points(geometry, shaderMaterial);
+			    // scene.add(particles);
+			    return particles;
+	        };
+		</script>
+
+	</body>
+</html>

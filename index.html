@@ -13,9 +13,6 @@
         <script src="utils/TrackballControls.js"></script>
         <script src="utils/bibtexParse.js"></script>
 
-        <script src="js/histogram2D.js"></script>
-        <script src="js/histogram3D.js"></script>
-
     </head>
     <body>
 <!-- ---------------------------------------------------------------------- -->
@@ -35,40 +32,72 @@
 
             <h2>Color of paintings</h2>
 
-            <p>I wanted to answer this simple question: what is the color of paintings? I started by doing some color quantization experiments on the paintings from the database. The figure below shows a painting from the dataset and its corresponding 3D histogram in RGB space. The size of each color represents its frequency in the painting. Sizes are limited to a maximum value for better representation. Refresh the page to display another painting.</p>
+            <p>I wanted to answer this simple question: what is the color of paintings? I started by doing some color quantization experiments on the paintings from the database. The figure below shows a painting from the dataset and its corresponding 3D histogram in RGB space. Each point represents a color present in the painting image pixels. The size represents the number of pixels that have that particular color. I discarded single pixels to reduce the size of data and produce a more appealing representation.</p>
 
             </div>
         </div>
 
-        <div class="row plot">
-            <div class="column-6" id="image_holder">
-                <a id="img_link" href="" target="_blank">
-                    <img id="image" class="image" src="" alt="">
-                </a>
+        <div class="row figure">
+            <div class="row plot">
+                <div class="column-6" id="image_holder">
+                    <a id="img_link" href="" target="_blank">
+                        <img id="image" class="image" src="" alt="">
+                    </a>
+                </div>
+                <div class="column-6" id="container"></div>
             </div>
-            <!-- <div class="column-6 svg_container" id="histogram2D"></div> -->
 
-            <div class="column-6" id="container"></div>
+            <div class="column-11 caption" id="caption1">
+                <p><b>Figure 1: </b>A random painting from the dataset (left) with classification informations and corresponding 3D histogram in RGB color space (right). Each point in the histogram represents a color present in the painting image pixels. The grid is a 256x256x256 cube and the size of the points is normalized between 1/256 and 50/256 for colors that count 2 and more pixels respectively. You can interact (pan, rotate and zoom) with the histogram and go the wikiart page by clicking on the painting image. Refresh the page to display another painting.</p>
+            </div>
         </div>
 
         <div class="row">
             <div class="column-12">
 
+            <p>In order to visualize the color of all the paintings in the dataset I computed the mean histogram. To perform this task and all the other features extraction, I choose python because it is easier to perform subroutines tasks, to handle local files and to implement in parallel to harness computing power from all the available cores (8 CPUs on my machine).</p>
+
+            <p>I wrote a speed test to compare the timings of computing the histograms of 0.1% of the dataset (first 35 paintings) with python single-threaded, python parallel and pure javascript.  On my machine (with poor internet connexion) it takes around 80 sec., 45 sec. and 35 sec. respectively to compute the histograms. You can <a href="javascript:;" onclick="testSpeed()">run the javascript test</a> yourself to get an idea of the timings on your system. Almost all of the time is spent on getting the images content from the web-sockets so it will vary with your internet connexion quality.</p>
+
             <p>So what are the colors of paintings? Figure 2 shows the mean histogram of the paintings of the database.</p>
+
+            </div>
+        </div>
+
+        <div class="row plot" id="figure2">
+            <!-- <div class="column-12"><iframe src="test2.html"></iframe></div> -->
+            <canvas id="c"></canvas>
+            <div class="column-12" id="content"></div>
+        </div>
+
+        <div class="row">
+            <div class="column-12">
+            <p>Out of curiosity we can then display the mean histograms for each genre, style and artist.</p>
+
+            </div>
+        </div>
+
+        <div class="row plot">
+            <div class="column-12"></div>
+        </div>
+
+        <div class="row">
+            <div class="column-12">
+
+            <p>We can see that we can clearly discriminate between some features based on their histograms, particularly in HSL and Lab color spaces. We will follow on this idea in the part on paintings classification. But next we discuss about the best way to represent a painting by its color palette. This allows to search for paintings by colors. I wrote a small applet that allows to do so on my dataset.</p>
+
 
 <!-- ---------------------------------------------------------------------- -->
 
             <h2>Finding paintings by color</h2>
 
-            <p>To select paintings given a particular color is more complicated that it first seems because we should extract an information about all the colors of a painting and compare it to the single color that the user selected. Here we test several methods.</p>
-            <p>The first method is the dominant color, the second method is the dominant color volume and the third method uses a simplified convex-hull on the 3D color histogram.</p>
+            <p>To select paintings given a particular color is more complicated that it first seems because we should extract an information about all the colors of a painting and compare it to the single color that the user selected. Here we test several methods. The first method is the dominant color, the second method is the dominant color volume and the third method uses a simplified convex-hull on the 3D color histogram to construct the color palette (maximum 5 colors).</p>
 
 <!-- ---------------------------------------------------------------------- -->
 
             <h2>Paintings classification</h2>
 
-            <p>For color comparison the relevant question is what informations describe best the colors in an image?</p>
-            <p>With features such as color, texture and shapes we can classify paintings by genre, style or date.</p>
+            <p>For color comparison the relevant question is what informations describe best the colors in an image? There is a consequent bibliography on images features extraction and their use for classification but the main approach to classify paintings by genre, style or date is to combine color, texture and shapes features.</p>
 
 <!-- ---------------------------------------------------------------------- -->
 
@@ -87,12 +116,12 @@
     </section>
 <!-- ---------------------------------------------------------------------- -->
 <!-- ---------------------------------------------------------------------- -->
-        <script> 
+
+        <script>
+
         // Figure 1
 
-            var img = null;
-
-            d3.json("paintings.json",function (json) {
+            d3.json("data/paintings.json",function (json) {
                 // pick a random item from the dataset
                 var item = json[Math.floor(Math.random()*json.length)];
                 // load the image of the painting and draw histograms
@@ -101,8 +130,23 @@
 
             function makeHistograms(item)
             {
+                // display caption
+                document.getElementById("caption1").style.display = "block";
+
                 // fill painting information
                 loadPaintingInformations(item);
+
+                // Get the particles from the image's pixels.
+                var canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                var ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
+                // getImageData returns an RGBA byte array.
+                var pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                
+                // compute the histogram
+                var histogram = computeHistogram(pixels);
 
                 // var start = new Date().getTime();
                 // histogram2D();
@@ -110,15 +154,17 @@
                 // var time = end - start;
                 // console.log("histogram2D - Execution time: "+time/1000+" sec")
 
-                var start = new Date().getTime();
-                histogram3D();
-                var end = new Date().getTime();
-                var time = end - start;
-                console.log("histogram3D - Execution time: "+time/1000+" sec")
+                // initiate a 3D scene in the "container" div
+                init3D("container");
+                // render the 3D histogram
+                histogram3D(histogram);
+                // add color-wheel box-plot axis
+                // scene.add(buildAxes(1.0))
+
             }
 
             function loadPaintingInformations (item) {
-                var item_info_string = "<div><p>";
+                var item_info_string = "<div id='image_info'><p>";
                 item_info_string += "<b>Artist: </b>"+item["artist"]+"<br>";
                 item_info_string += "<b>Title: </b>"+item["title"]+"<br>";
                 item_info_string += "<b>Genre: </b>"+item["genre"].replace("-", " ")+"<br>";
@@ -127,40 +173,60 @@
                 $("#image_holder").append(item_info_string);
             };
             
-            function loadImage(item)
-            {               
+            function loadImage(item) {
+                // Create wikiart link from painting url               
                 document.getElementById('img_link').href = item["url"];
-               
+                // Go through another proxy to circumvent the CORS limitation
                 // var url = "https://crossorigin.me/"+item["url"];
                 var url = "https://cors-anywhere.herokuapp.com/"+item["url"];
-                
+                // Get image DOM element from figure 1
                 img = document.getElementById('image');
                 // Set the crossOrigin property.
                 img.crossOrigin = 'Anonymous';
-                
-                // Wait until loaded.
-                img.onload = function() {makeHistograms(item)};
-                img.onerror = function() { alert('Error loading image.'); console.error('Error loading image:'); console.error(url) };
 
-                // Try to load the painting with Large size (~150kb)
+                // Try to load the painting with Blog size (~50kb)
                 $.ajax({
                     type: 'HEAD',
-                    url: url+'!Large.jpg',
-                    success: function() 
-                    {
-                        img.src = url+"!Large.jpg";
-                    },
+                    url: url+'!Blog.jpg',
+                    success: function() {img.src = url+"!Blog.jpg";},
                     // If it fails load default size
-                    error: function() 
-                    {
-                        img.src = url;
-                    }
+                    error: function() {img.src = url;}
                 });
 
                 // img.src = "local/flow.jpg";
+
+                // Wait until image is fully loaded to compute histogram
+                img.onload = function() {makeHistograms(item)};
+                // Error function
+                img.onerror = function() { 
+                    alert('Error loading image: ', url);
+                    console.error('Error loading image:');
+                    console.error(url) 
+                };
             }
             
         </script>
+<!-- ---------------------------------------------------------------------- -->
+
+<!--         <script> 
+        // Figure 2
+
+        // load data from the histogram dataset
+        d3.json("data/histograms.json",function (json) {
+            alert();
+            // load the histogram
+            var histogram2 = json;
+            // initiate a 3D scene in the "histogram_all" div
+            init3D("histogram_all");
+            // render the 3D histogram
+            histogram3D(histogram2);
+        });
+
+
+            
+        </script> -->
+
+        
 <!-- ---------------------------------------------------------------------- -->
         <script>
         // Bibliography
@@ -185,8 +251,12 @@
         </script>
 
     </body>
+
+    <script src="js/histogram3D.js"></script>
+    <script src="js/histogramTestSpeed.js"></script>
+
 <!-- http://bl.ocks.org/cmpolis/fbc368f79c06c1912b8c04c795f592a8 -->
 <!-- http://bl.ocks.org/armollica/0dfac0e7c3d33fcca86b -->
 <!-- http://bl.ocks.org/devgru/4c6c73b278a0dba364f8 -->
-<!-- view-source:http://h3stogram.herokuapp.com/javascripts/h3stogram_main.js -->
+<!-- http://h3stogram.herokuapp.com -->
 </html>
