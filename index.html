@@ -1,259 +1,171 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <title>A Study of Paintings</title>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <title class="EN">A Study of Paintings</title>
+    <title class="FR">Etude de Tableaux</title>
 
-        <link rel="stylesheet" href="main.css">
+    <link rel="stylesheet" href="../assets/main.css">
+    <link rel="stylesheet" href="paintings-study.css">
 
-        <script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s=" crossorigin="anonymous"></script>
-        <script src="https://d3js.org/d3.v4.min.js"></script>
-        <script src="utils/three.min.js"></script> <!-- r81 -->
-        <script src="utils/TrackballControls.js"></script>
-        <script src="utils/bibtexParse.js"></script>
-
-    </head>
-    <body>
-<!-- ---------------------------------------------------------------------- -->
-<!-- ---------------------------------------------------------------------- -->
-    <section class="wrapper">
-
-        <div class="row">
-            <div class="column-12">
-
-            <h1>A study of paintings</h1>
-
-            <p>Out of personal interest I wanted to examine the underlying patterns in paintings through a computer-vision approach. This approach is used for automated classification of images. This is important because it helps image recognition and classification techniques that are used for various applications such as image search (google, tin eye, etc.), </p>
-
-            <p>As I wanted to study as many paintings as possible, I searched for available database. I ended-up making my own dataset from the paintings aggregated by <a href="http://wikiart.org" target="_blank">wikiart.org</a>. This dataset regroups 35028 paintings from 1503 artists with genre, style and date informations for each.</p>
-
-<!-- ---------------------------------------------------------------------- -->
-
-            <h2>Color of paintings</h2>
-
-            <p>I wanted to answer this simple question: what is the color of paintings? I started by doing some color quantization experiments on the paintings from the database. The figure below shows a painting from the dataset and its corresponding 3D histogram in RGB space. Each point represents a color present in the painting image pixels. The size represents the number of pixels that have that particular color. I discarded single pixels to reduce the size of data and produce a more appealing representation.</p>
-
-            </div>
-        </div>
-
-        <div class="row figure">
-            <div class="row plot">
-                <div class="column-6" id="image_holder">
-                    <a id="img_link" href="" target="_blank">
-                        <img id="image" class="image" src="" alt="">
-                    </a>
-                </div>
-                <div class="column-6" id="container"></div>
-            </div>
-
-            <div class="column-11 caption" id="caption1">
-                <p><b>Figure 1: </b>A random painting from the dataset (left) with classification informations and corresponding 3D histogram in RGB color space (right). Each point in the histogram represents a color present in the painting image pixels. The grid is a 256x256x256 cube and the size of the points is normalized between 1/256 and 50/256 for colors that count 2 and more pixels respectively. You can interact (pan, rotate and zoom) with the histogram and go the wikiart page by clicking on the painting image. Refresh the page to display another painting.</p>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="column-12">
-
-            <p>In order to visualize the color of all the paintings in the dataset I computed the mean histogram. To perform this task and all the other features extraction, I choose python because it is easier to perform subroutines tasks, to handle local files and to implement in parallel to harness computing power from all the available cores (8 CPUs on my machine).</p>
-
-            <p>I wrote a speed test to compare the timings of computing the histograms of 0.1% of the dataset (first 35 paintings) with python single-threaded, python parallel and pure javascript.  On my machine (with poor internet connexion) it takes around 80 sec., 45 sec. and 35 sec. respectively to compute the histograms. You can <a href="javascript:;" onclick="testSpeed()">run the javascript test</a> yourself to get an idea of the timings on your system. Almost all of the time is spent on getting the images content from the web-sockets so it will vary with your internet connexion quality.</p>
-
-            <p>So what are the colors of paintings? Figure 2 shows the mean histogram of the paintings of the database.</p>
-
-            </div>
-        </div>
-
-        <div class="row plot" id="figure2">
-            <!-- <div class="column-12"><iframe src="test2.html"></iframe></div> -->
-            <canvas id="c"></canvas>
-            <div class="column-12" id="content"></div>
-        </div>
-
-        <div class="row">
-            <div class="column-12">
-            <p>Out of curiosity we can then display the mean histograms for each genre, style and artist.</p>
-
-            </div>
-        </div>
-
-        <div class="row plot">
-            <div class="column-12"></div>
-        </div>
-
-        <div class="row">
-            <div class="column-12">
-
-            <p>We can see that we can clearly discriminate between some features based on their histograms, particularly in HSL and Lab color spaces. We will follow on this idea in the part on paintings classification. But next we discuss about the best way to represent a painting by its color palette. This allows to search for paintings by colors. I wrote a small applet that allows to do so on my dataset.</p>
-
-
-<!-- ---------------------------------------------------------------------- -->
-
-            <h2>Finding paintings by color</h2>
-
-            <p>To select paintings given a particular color is more complicated that it first seems because we should extract an information about all the colors of a painting and compare it to the single color that the user selected. Here we test several methods. The first method is the dominant color, the second method is the dominant color volume and the third method uses a simplified convex-hull on the 3D color histogram to construct the color palette (maximum 5 colors).</p>
-
-<!-- ---------------------------------------------------------------------- -->
-
-            <h2>Paintings classification</h2>
-
-            <p>For color comparison the relevant question is what informations describe best the colors in an image? There is a consequent bibliography on images features extraction and their use for classification but the main approach to classify paintings by genre, style or date is to combine color, texture and shapes features.</p>
-
-<!-- ---------------------------------------------------------------------- -->
-
-            <h2>Selecting interesting paintings</h2>
-
-            <p>By comparing the similarity between paintings we can evaluate the originality and influence for a particular painting <a class="ref" target="_blank">[1]</a>. Originality is a low value of similarity with paintings painted prior to the considered painting and influence is a high similarity with paintings painted after this work. Interesting paintings are paintings that have a low originality over influence ratio. By evaluating the similarity connection graph of every painting we can therefore determine the most creative paintings throughout history <a class="ref" target="_blank">[2]</a>.</p>
-            </div>
-        </div>
-
-<!-- ---------------------------------------------------------------------- -->
-            
-        <div class="row bibliography">
-            <div class="column-12"><h2>Bibliography</h2></div>          
-        </div>
-
-    </section>
-<!-- ---------------------------------------------------------------------- -->
-<!-- ---------------------------------------------------------------------- -->
-
-        <script>
-
-        // Figure 1
-
-            d3.json("data/paintings.json",function (json) {
-                // pick a random item from the dataset
-                var item = json[Math.floor(Math.random()*json.length)];
-                // load the image of the painting and draw histograms
-                loadImage(item);
-            });
-
-            function makeHistograms(item)
-            {
-                // display caption
-                document.getElementById("caption1").style.display = "block";
-
-                // fill painting information
-                loadPaintingInformations(item);
-
-                // Get the particles from the image's pixels.
-                var canvas = document.createElement('canvas');
-                canvas.width = img.naturalWidth;
-                canvas.height = img.naturalHeight;
-                var ctx = canvas.getContext("2d");
-                ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
-                // getImageData returns an RGBA byte array.
-                var pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-                
-                // compute the histogram
-                var histogram = computeHistogram(pixels);
-
-                // var start = new Date().getTime();
-                // histogram2D();
-                // var end = new Date().getTime();
-                // var time = end - start;
-                // console.log("histogram2D - Execution time: "+time/1000+" sec")
-
-                // initiate a 3D scene in the "container" div
-                init3D("container");
-                // render the 3D histogram
-                histogram3D(histogram);
-                // add color-wheel box-plot axis
-                // scene.add(buildAxes(1.0))
-
-            }
-
-            function loadPaintingInformations (item) {
-                var item_info_string = "<div id='image_info'><p>";
-                item_info_string += "<b>Artist: </b>"+item["artist"]+"<br>";
-                item_info_string += "<b>Title: </b>"+item["title"]+"<br>";
-                item_info_string += "<b>Genre: </b>"+item["genre"].replace("-", " ")+"<br>";
-                item_info_string += "<b>Style: </b>"+item["style"].replace("-", " ")+"<br>";
-                item_info_string += "<b>Year: </b>"+item["year"]+"</p></div>";
-                $("#image_holder").append(item_info_string);
-            };
-            
-            function loadImage(item) {
-                // Create wikiart link from painting url               
-                document.getElementById('img_link').href = item["url"];
-                // Go through another proxy to circumvent the CORS limitation
-                // var url = "https://crossorigin.me/"+item["url"];
-                var url = "https://cors-anywhere.herokuapp.com/"+item["url"];
-                // Get image DOM element from figure 1
-                img = document.getElementById('image');
-                // Set the crossOrigin property.
-                img.crossOrigin = 'Anonymous';
-
-                // Try to load the painting with Blog size (~50kb)
-                $.ajax({
-                    type: 'HEAD',
-                    url: url+'!Blog.jpg',
-                    success: function() {img.src = url+"!Blog.jpg";},
-                    // If it fails load default size
-                    error: function() {img.src = url;}
-                });
-
-                // img.src = "local/flow.jpg";
-
-                // Wait until image is fully loaded to compute histogram
-                img.onload = function() {makeHistograms(item)};
-                // Error function
-                img.onerror = function() { 
-                    alert('Error loading image: ', url);
-                    console.error('Error loading image:');
-                    console.error(url) 
-                };
-            }
-            
-        </script>
-<!-- ---------------------------------------------------------------------- -->
-
-<!--         <script> 
-        // Figure 2
-
-        // load data from the histogram dataset
-        d3.json("data/histograms.json",function (json) {
-            alert();
-            // load the histogram
-            var histogram2 = json;
-            // initiate a 3D scene in the "histogram_all" div
-            init3D("histogram_all");
-            // render the 3D histogram
-            histogram3D(histogram2);
-        });
-
-
-            
-        </script> -->
-
-        
-<!-- ---------------------------------------------------------------------- -->
-        <script>
-        // Bibliography
-
-        $.get('paintings_study.bib', function(data) {
-            var biblio = bibtexParse.toJSON(data);
-            for (i=0; i<biblio.length; i++) {
-                var citation = biblio[i]["entryTags"];
-                var bibentry = citation["author"]+"<br/>"
-                bibentry += "<a target='_blank' href='"+citation["url"]+"' style='text-decoration:none'>"+citation["title"]+"</a><br/>"
-                bibentry += citation["journal"]+", "+citation["year"]
-                $(".bibliography").append('<div class="column-12 bibentry"><div style="margin-right:0.5em;">['+(i+1).toString()+']</div><div id="bibitem'+i.toString()+'">'+bibentry+'</div></div>')
-            }
-        }, 'text');
-
-        $( document ).ready(function() {
-            $(".ref").each(function(i, e) {
-                this.href = $("#bibitem"+i.toString()+" a").attr("href");
-            });
-        });
-            
-        </script>
-
-    </body>
+    <script src="../assets/external/jquery-3.1.0.min.js"></script>
+    <script src="../assets/external/d3.v4.2.4.min.js"></script><!-- just for loading the JSON ... -->
+    <script src="../assets/external/three.min.js"></script> <!-- r81 -->
+    <script src="../assets/external/TrackballControls.js"></script>
+    <script src="../assets/external/bibtexParse.js"></script>
 
     <script src="js/histogram3D.js"></script>
     <script src="js/histogramTestSpeed.js"></script>
+
+</head>
+<body>
+<!-- ---------------------------------------------------------------------- -->
+<!-- ---------------------------------------------------------------------- -->
+<div class="wrapper">
+    <div class="header"></div>
+    <div class="row">
+        <div class="column-12">
+
+        <h1 class="EN">A study of paintings</h1>
+        <h1 class="FR">Une étude de tableaux</h1>
+
+        <p class="EN">I wanted to examine the underlying patterns in paintings through a computer-vision approach and use machine learning. As I wanted to study as many paintings as possible, I searched for available database. I ended-up making my own dataset from the paintings aggregated by <a href="http://wikiart.org" target="_blank">wikiart.org</a>. This dataset regroups 35028 paintings from 1503 artists with genre, style and date informations for each. I started to perform image classification with Python, I will soon add the first results.</p>
+
+        <p class="FR">Je voulais examiner numériquement des peintures et faire de l'apprentissage automatique. Comme je voulais étudier le plus de tableaux possible, j'ai cherché une base de données. J'ai fini par créer mon propre jeu de données avec des tableaux rassemblés par <a href="http://wikiart.org" target="_blank">wikiart.org</a>, ce fichier regroupe 35028 tableaux de 1503 artistes différents avec le genre, le style et la date pour chacun. J'ai commencé à faire de la classification d'images avec Python, j'ajouterai bientôt les premiers résultats.</p>
+
+<!-- ---------------------------------------------------------------------- -->
+
+        <h3 class="EN">Color of paintings</h3>
+        <h3 class="FR">Couleur des tableaux</h3>
+
+        <p class="EN">I wanted to answer this simple question: what is the color of paintings? I started by doing some color quantization experiments on the paintings from the database. The figure below shows a painting from the dataset and its corresponding 3D histogram in RGB space.</p>
+
+        <p class="FR">Je voulais répondre à cette question simple: quelle est la couleur des tableaux? J'ai commencé à faire des expérimentations de quantification de couleurs sur les tableaux de la base de données. La figure ci-dessous montre un tableau de la base et l’histogramme 3D en RGB correspondant.</p>
+
+        </div>
+    </div>
+
+    <div class="row figure">
+        <div class="row plot">
+            <div class="row-action column-12">
+                <div class="status"></div>
+                <img src="../assets/img/italic.svg" class="infos-action">
+                <img src="../assets/img/sync.svg" class="refresh-action">
+                <img src="../assets/img/screen-full.svg" class="fullscreen-action">
+              </div>
+
+            <p class="column-11 caption infos EN">
+              <b>Infos :</b>
+              A random painting from the dataset (left) with classification informations and corresponding 3D histogram in RGB color space (right). Each point in the histogram represents a color present in the painting image pixels. The grid is a 256x256x256 cube and the size of the points is normalized between 1/256 and 50/256 for colors that count 2 and more pixels respectively. I discarded single pixels to reduce the size of data and produce a more appealing representation. You can interact (rotate and zoom) with the histogram and go the wikiart page by clicking on the painting image. Click the refresh button to display another painting.
+            </p>
+            <p class="column-11 caption infos FR">
+              <b>Infos :</b>
+              Une peinture aléatoire de la base de données (gauche) avec les informations utiles à la classification et l’histogramme 3D RGB correspondant (droite). Chaque point de histogramme représente une couleur présente dans les pixels de l'image. Le volume est un cube 256x256x256 et la taille des points est normalisée entre 1/256 et 50/256 pour les couleurs qui comptent 2 pixels minimum. Je n'ai pas considéré les couleurs présentent dans un seul pixel pour réduire la taille des données et produire une représentation plus parlante. Vous pouvez interagir (rotation et zoom) avec l'histogramme et visiter la page wikiart en cliquant sur l'image. Cliquez sur le bouton rafraîchir pour afficher un autre tableau.
+            </p>
+
+
+            <div class="column-6" id="image_holder">
+                <a id="img_link" href="" target="_blank">
+                    <img id="image" class="image" src="" alt="">
+                </a>
+            </div>
+            <div class="column-6" id="container"></div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="column-12">
+
+        <p class="EN">In order to visualize the color of all the paintings in the dataset I computed the mean histogram. To perform this task and all the other features extraction, I choose Python because it is easier to handle local files and the computer vision and machine learning algorithms are already implemented in the PyOpenCV and scikit-learn librairies. You can consult the details to know more about my objectives for this project.</p>
+
+        <p class="FR">Pour visualiser la couleur de tous les tableaux de la base de données j'ai calculé l'histogramme moyen. Pour réaliser cette tâche et les extractions de caractéristiques des peintures j'ai utilisé Python. Cela rendait plus facile la gestion des fichiers locaux et les algorithmes de vision par ordinateur et d'apprentissage automatique sont déjà implémenté dans les librairies PyOpenCV et scikit-learn. Vous pouvez consulter les détails pour en savoir plus sur mes objectifs pour ce projet.</p>
+
+<!--         <p>So what are the colors of paintings? Figure 2 shows the mean histogram of the paintings of the database.</p> -->
+
+<!--         </div>
+    </div> -->
+
+<!--     <div class="row plot" id="figure2">
+        <canvas id="c"></canvas>
+        <div class="column-12" id="content"></div>
+    </div>
+
+    <div class="row">
+        <div class="column-12">
+        <p>Out of curiosity we can then display the mean histograms for each genre, style and artist.</p>
+
+        </div>
+    </div>
+
+    <div class="row plot">
+        <div class="column-12"></div>
+    </div> -->
+
+<!--     <div class="row">
+        <div class="column-12"> -->
+
+<!--         <p>We can see that we can clearly discriminate between some features based on their histograms, particularly in HSL and Lab color spaces. We will follow on this idea in the part on paintings classification. But next we discuss about the best way to represent a painting by its color palette. This allows to search for paintings by colors. I wrote a small applet that allows to do so on my dataset.</p> -->
+
+
+<!-- ---------------------------------------------------------------------- -->
+
+        <h3 class="EN" style="color: #9E9E9E">Finding paintings by color</h3>
+        <h3 class="FR" style="color: #9E9E9E">Trouver des tableaux par couleur</h3>
+
+<!--         <p>To select paintings given a particular color is more complicated that it first seems because we should extract an information about all the colors of a painting and compare it to the single color that the user selected. Here we test several methods. The first method is the dominant color, the second method is the dominant color volume and the third method uses a simplified convex-hull on the 3D color histogram to construct the color palette (maximum 5 colors).</p> -->
+
+<!-- ---------------------------------------------------------------------- -->
+
+        <h3 class="EN" style="color: #9E9E9E">Paintings classification</h3><br>
+        <h3 class="FR" style="color: #9E9E9E">Classification de tableaux</h3><br>
+
+<!--         <p>For color comparison the relevant question is what informations describe best the colors in an image? There is a consequent bibliography on images features extraction and their use for classification but the main approach to classify paintings by genre, style or date is to combine color, texture and shapes features.</p> -->
+
+<!-- ---------------------------------------------------------------------- -->
+
+        <h3 class="EN" style="color: #9E9E9E">Selecting interesting paintings</h3>
+        <h3 class="FR" style="color: #9E9E9E">Sélectionner des tableaux intéressants</h3>
+
+<!--         <p>By comparing the similarity between paintings we can evaluate the originality and influence for a particular painting <a class="ref" target="_blank">[1]</a>. Originality is a low value of similarity with paintings painted prior to the considered painting and influence is a high similarity with paintings painted after this work. Interesting paintings are paintings that have a low originality over influence ratio. By evaluating the similarity connection graph of every painting we can therefore determine the most creative paintings throughout history <a class="ref" target="_blank">[2]</a>.</p> -->
+
+<!-- ---------------------------------------------------------------------- -->
+            
+<!--     <div class="bibliography">
+        <h3 class="EN">Bibliography</h3>     
+        <h3 class="FR">Bibliographie</h3>  
+    </div> -->
+
+        </div>
+    </div>
+      <div class="detailsSection column-12">
+    <h3 class="EN">Details</h3>
+    <h3 class="FR">Détails</h3>
+    <div class="details">
+      <div class="line-separator"></div>
+      <div class="EN column-12">      
+        <p>
+        I wanted to do image classification on paintings. I started to write a paper to present my method and the database, I plan to publish it on arxiv. I tought of this page as a simplified and interactive version of this paper. I also want to implement an applet that allows to search paintings by color(s).
+<!--           I wrote a speed test to compare the timings of computing the histograms of 0.1% of the dataset (first 35 paintings) with python single-threaded, python parallel and pure javascript.  On my machine (with poor internet connexion) it takes around 80 sec., 45 sec. and 35 sec. respectively to compute the histograms. You can <a href="javascript:;" onclick="testSpeed()">run the javascript test</a> yourself to get an idea of the timings on your system. Almost all of the time is spent on getting the images content from the web-sockets so it will vary with your internet connexion quality. -->
+        </p>
+      </div>
+      <div class="FR column-12">      
+        <p>
+          Je voulais faire de la classification d'image sur des tableaux. J'ai commencé à écrire un papier pour présenter ma méthode et la base de données. Je prévois de le publier sur arxiv. J'ai pensé cette page comme une version simplifiée et interactive de ce papier. J'aimerai également implémenter une application qui permette de rechercher des tableaux par couleur(s).
+        </p>
+      </div>
+      <div class="line-separator"></div>
+    </div>
+  </div>
+    <div class="footer"></div>
+</div>
+<!-- ---------------------------------------------------------------------- -->
+<!-- ---------------------------------------------------------------------- -->
+
+<script src="../assets/main.js"></script>
+<script src="paintings-study.js"></script>
+
+</body>
 
 <!-- http://bl.ocks.org/cmpolis/fbc368f79c06c1912b8c04c795f592a8 -->
 <!-- http://bl.ocks.org/armollica/0dfac0e7c3d33fcca86b -->

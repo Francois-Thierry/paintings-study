@@ -18,7 +18,7 @@ function init3D(id) {
     // init renderer
     renderer = new THREE.WebGLRenderer({antialias:true});
     renderer.setClearColor(new THREE.Color('#9E9E9E'));
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(2*window.devicePixelRatio);
     // put the renderer in the container
     container.appendChild(renderer.domElement);
     // init camera
@@ -32,14 +32,25 @@ function init3D(id) {
     scene = new THREE.Scene();
     // init the controls to rotate the view
     initControls(camera);
-    // force resize of canvas to the image width
-    var LimitSize = $(".column-6").width();
-    renderer.setSize(LimitSize, LimitSize);
+
 
     // Start drawing
     animate();
     render();
 }
+
+var wheelDistance = function(evt){
+            if (!evt) evt = event;
+            var w=evt.wheelDelta, d=evt.detail;
+            if (d){
+                if (w) return w/d/40*d>0?1:-1; // Opera
+                else return -d/3;              // Firefox;         TODO: do not /3 for OS X
+            } else return w/120;             // IE/Safari/Chrome TODO: /3 for Chrome OS X
+        };
+var wheelDirection = function(evt){
+    if (!evt) evt = event;
+    return (evt.detail<0) ? 1 : (evt.wheelDelta>0) ? 1 : -1;
+};
 
 function initControls(camera) {
     // set the origin of the world to the center of a unitary cube
@@ -60,13 +71,23 @@ function initControls(camera) {
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
+    // force resize of canvas to the image width
+    var limitWidth = $(".column-6").width();
+    var limitHeight = $(".row.plot").height();
+    console.log(limitWidth, limitHeight)
+    if (limitWidth > limitHeight) {
+        limitSize = limitHeight-150;
+    } else {
+        limitSize = limitWidth;
+    }
+    renderer.setSize(limitSize, limitSize);
+    // If we have dynamic movement, we need to call render every frame.
+    if(!controls.staticMoving) render();
 // ht;
 //     camera.fov = (360 / Math.PI) * Math.atan(tanFOV * (window.innerHeight / windowHeight));
 //     camera.position.x = window.innerWidth / 2;
 //     camera.position.y = window.innerHeight / 2;
-    camera.updateProjectionMatrix();
-    // If we have dynamic movement, we need to call render every frame.
-    if(!controls.staticMoving) render();
+    // camera.updateProjectionMatrix();
 }
 
 function render() {
